@@ -252,7 +252,7 @@ def stage_two_preprocessing(data: pd.Series) -> pd.Series:
     # designed to be run after remove_contractions
     data_ = data.dropna()
     data_ = remove_punctuation(data_)
-    data_ = numbers_to_words(data_)
+    #data_ = numbers_to_words(data_)
     data_ = remove_stopwords(data_)
     return data_
 
