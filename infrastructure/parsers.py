@@ -64,7 +64,8 @@ def split_by_sentences(data: pd.DataFrame) -> pd.DataFrame:
     
     new_rows = []
     for i,row in data.iterrows():
-        line = re.split(r'[.!?]+',row.text)
+        if type(row.text) != float:
+            line = re.split(r'[.!?]+',row.text)
         curr_rows = []
         for sentence in line:
             if sentence == '':
@@ -224,12 +225,19 @@ def stage_one_preprocessing(data: pd.Series) -> pd.Series:
     :param data: a Series of Comment data
 
     """
+    data_ = data.dropna()
+    print('ascii')
     data_ = remove_non_ascii(data)
+    print('lower')
     data_ = to_lowercase(data_)
+    print('slash')
     data_ = underscore_and_slash_to_space(data_)
+    print('ellipse')
     data_ = remove_ellipses(data_)
+    print('white')
     data_ = shrink_whitespace(data_)
-    data_ = remove_contractions(data_)
+    #print('contracts')
+    #data_ = remove_contractions(data_)
     return data_
 
 
