@@ -8,3 +8,5 @@ pipeline/Graphlets/
 pipeline/k_clique_graphs_dense_subgraphs/
 pipeline/knowledge_graph.py
 pipeline/run_project.sh
+data/processed/datasets/test.csv
+data/processed/datasets/train.csv
