@@ -41,44 +41,36 @@ import pickle
 import re
 from typing import Dict, List, Tuple
 
-RAW_TXT = './data/raw_session_notes.txt'
-RAW_FUNDING = './data/funding_rounds.csv'
+RAW_TXT = './data/processed/datasets/train.csv'
 CONTRACTIONS = './data/contractions.pkl'
-INDICES = ['Cohort', 'Site', 'Session', 'Venture_ID', 'Speaker_ID', 'Comment']
-ID = 'Venture_ID'
-RAISED = 'Amount_Raised_CAD'
+INDICES = ['id', 'text', 'label']
 
 
-def load_data(txt_path: str = RAW_TXT,
-              fund_path: str = RAW_FUNDING) -> pd.DataFrame:
+def load_data(txt_path: str = RAW_TXT) -> pd.DataFrame:
     """Loads raw text and funding data and computes max raised funding.
 
     :param txt_path: path to raw text file
-    :param fund_path: path to raw funding file
 
     """
-    df_txt = pd.read_csv(txt_path, sep='\t')[INDICES]
-    df_fund = pd.read_csv(fund_path)
-    fund = df_fund.groupby(by=ID)[RAISED].max()
-    df = pd.merge(df_txt, fund, how='inner', on='Venture_ID')
+    df = pd.read_csv(txt_path)[INDICES]
     return df
 
 
 def split_by_sentences(data: pd.DataFrame) -> pd.DataFrame:
-    """Create a new row for every sentence spoken by each speaker.
+    """
 
     :param data: a DataFrame of the entire dataset
     """
     
     new_rows = []
     for i,row in data.iterrows():
-        comment = re.split(r'[.!?]+',row.Comment)
+        line = re.split(r'[.!?]+',row.text)
         curr_rows = []
-        for sentence in comment:
+        for sentence in line:
             if sentence == '':
                 continue
             curr_row = row.copy()
-            curr_row.Comment = sentence
+            curr_row.text = sentence
             curr_rows.append(curr_row)
         new_rows.extend(curr_rows)
 
@@ -92,7 +84,7 @@ def remove_non_ascii(data: pd.Series) -> pd.Series:
     :param data: a Series of Comment data
 
     """
-    return data.str.replace(r'[^\x00-\x7F]+', repl='', regex=True)
+    return data.replace(r'[^\x00-\x7F]+', value='', regex=True)
 
 
 def to_lowercase(data: pd.Series) -> pd.Series:
@@ -110,7 +102,7 @@ def underscore_and_slash_to_space(data: pd.Series) -> pd.Series:
     :param data: a Series of Comment data
 
     """
-    return data.str.replace(r'[\_/]', repl=' ', regex=True)
+    return data.replace(r'[\_/]', value=' ', regex=True)
 
 
 def shrink_whitespace(data: pd.Series) -> pd.Series:
@@ -119,16 +111,8 @@ def shrink_whitespace(data: pd.Series) -> pd.Series:
     :param data: a Series of Comment data
 
     """
-    return data.str.replace(r'\s+', repl=' ', regex=True)
+    return data.replace(r'\s+', value=' ', regex=True)
 
-
-def key_speakers(data: pd.Series) -> pd.Series:
-    """Replaces {SPEAKER_NUMBER} with SSSSS.
-
-    :param data: a Series of Comment data
-
-    """
-    return data.str.replace(r'\{\d+\}', repl=' SSSSS ', regex=True)
 
 
 def remove_ellipses(data: pd.Series) -> pd.Series:
@@ -137,7 +121,7 @@ def remove_ellipses(data: pd.Series) -> pd.Series:
     :param data: a Series of Comment data
 
     """
-    return data.str.replace(r'\(\.+\)', repl='', regex=True)
+    return data.replace(r'\(\.+\)', value='', regex=True)
 
 
 def remove_punctuation(data: pd.Series) -> pd.Series:
@@ -146,7 +130,7 @@ def remove_punctuation(data: pd.Series) -> pd.Series:
     :param data: a Series of Comment data
 
     """
-    return data.str.replace(r'[^\w\s]+', repl='', regex=True)
+    return data.replace(r'[^\w\s]+', value='', regex=True)
 
 
 def numbers_to_words(data: pd.Series) -> pd.Series:
@@ -245,7 +229,6 @@ def stage_one_preprocessing(data: pd.Series) -> pd.Series:
     data_ = underscore_and_slash_to_space(data_)
     data_ = remove_ellipses(data_)
     data_ = shrink_whitespace(data_)
-    data_ = key_speakers(data_)
     data_ = remove_contractions(data_)
     return data_
 
@@ -286,17 +269,17 @@ def run_pipeline() -> pd.DataFrame:
     print('Loading data...')
     data = load_data()
     print('Stage one processing...')
-    comments = data.Comment
-    comments_ = stage_one_preprocessing(comments)
+    text = data.text
+    text_ = stage_one_preprocessing(text)
     data_ = data.copy()
-    data_.Comment = comments_
+    data_.text = text_
     print('Splitting by sentences...')
     data_ = split_by_sentences(data_)
     print('Stage two processing...')
-    comments_ = stage_two_preprocessing(data_.Comment)
+    text_ = stage_two_preprocessing(data_.text)
     print('Stage three processing...')
-    comments_ = stage_three_preprocessing(comments_)
-    data_.Comment = comments_
+    text_ = stage_three_preprocessing(text_)
+    data_.text = text_
     print('Saving file...')
-    data_.to_csv(r'./data/stage_three_session_notes.csv')
+    data_.to_csv(r'./data/stage_three_text.csv')
     return data_
