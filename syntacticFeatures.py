@@ -104,7 +104,7 @@ def getSyntacticalFeatures(corpus_df):
         
 if __name__ == "__main__":
     filename = 'data_preprocessed.csv'
-    filepath = 'C:/Users/Louis/Documents/4thYearUofT/MIE368/fakeNewsPrediction/prediction_tool/data/processed/datasets/'
+    filepath = './data/processed/datasets/'
     
     df = pd.read_csv(filepath+filename, index_col='index')
     #print(df.head())
