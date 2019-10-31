@@ -41,7 +41,7 @@ import pickle
 import re
 from typing import Dict, List, Tuple
 
-RAW_TXT = './data/processed/datasets/train.csv'
+RAW_TXT = './data/processed/datasets/train_whole.csv'
 CONTRACTIONS = './data/contractions.pkl'
 INDICES = ['id', 'text', 'label']
 
@@ -291,3 +291,7 @@ def run_pipeline() -> pd.DataFrame:
     print('Saving file...')
     data_.to_csv(r'./data/stage_three_text.csv')
     return data_
+
+
+if __name__ == "__main__":
+    run_pipeline().to_csv('train_whole_preprocessed.csv')
