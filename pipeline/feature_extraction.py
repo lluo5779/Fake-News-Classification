@@ -10,8 +10,13 @@ from nltk.probability import LidstoneProbDist
 from nltk.lm.api import LanguageModel
 from nltk.lm import MLE, Vocabulary
 from nltk.lm.preprocessing import padded_everygram_pipeline, pad_both_ends
+from nltk.corpus import stopwords
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.feature_extraction.text import TfidfTransformer
+from sklearn.model_selection import train_test_split
 
 PRONOUNS = ["I", "me", "mine", "my", "you", "yours", "your", "we", "us", "our", "ours"]
+QUESTION = ['which', 'where', 'why', 'who', 'whose', 'how', 'what', 'when']
 
 class TextFeatures(object):
 	""" An object that extracts features from cleaned text files
@@ -39,8 +44,9 @@ class TextFeatures(object):
 		if raw_df is None:
 			raw_df = self.df
 		raw_df = raw_df.dropna()
+
 		df = pd.DataFrame(columns = [['text', 'label']])
-		df['text'] = raw_df.groupby(['id'])['text'].apply(" ".join)
+		df['text'] = raw_df.groupby(['id'])['text'].apply("".join)
 		df['label'] = raw_df.groupby(['id'])['label'].first()
 
 		return df
@@ -89,6 +95,16 @@ class TextFeatures(object):
 			total += text.count(pronoun)
 		return total
 
+	def get_question_ratio(self, text):
+		total = 0
+		for q in QUESTION:
+			total += text.count(q)
+
+		if len(text) == 0:
+			return 0
+		else:
+			return total/len(text)
+
 	def get_personal_pronouns(self, df = None):
 		if df is None:
 			df = self.df
@@ -97,6 +113,46 @@ class TextFeatures(object):
 		pronoun_counts['count'] = df['text'].apply(lambda x: self.count_pronouns(x))
 		pronoun_counts['label'] = df['label']
 		return pronoun_counts
+		
+	def get_word_count(self, tokens):
+		length = len(tokens.split())
+		if length == 0:
+			print(tokens)
+			return 0
+		return sum(len(word) for word in tokens)/length
+
+	def get_tfidf(self, df):
+		X_train, X_test, y_train, y_test = train_test_split(df.drop(['label'], axis = 1), df.label, random_state=0)
+		transformer = TfidfTransformer(smooth_idf = False)
+		count_vectorizer = CountVectorizer(ngram_range=(1, 2))
+		counts = count_vectorizer.fit_transform(X_train['text'].values)
+		tfidf = transformer.fit_transform(counts)
+		test_counts = count_vectorizer.transform(X_test['text'].values)
+		test_tfidf = transformer.fit_transform(test_counts)
+		return tfidf, test_tfidf, y_train, y_test
+
+
+	#def getDistinctWords(tokens):
+	#	tokenizer = RegexpTokenizer(r'\w+')
+	#	zen_no_punc = tokenizer.tokenize(tokens)
+	#	return len(set(w.title() for w in zen_no_punc if w.lower() not in stopwords.words()))
+
+	#def get_average_word_length(self, tokens):
+	#    Total characters / Total words
+	#	article_length = len(tokens)
+	#	average = sum(len(word) for word in tokens) / article_length
+	#	return average
+
+	#def get_article_length(self, tokens):
+	#	article_length = len(tokens)
+	#	return article_length
+
+	#def getAvgSentenceLength(tokens,article):
+	#	# In # of words
+	#	tokenizer = RegexpTokenizer(r'\w+')
+	#	zen_no_punc = tokenizer.tokenize(tokens)
+	#	sentences = sentenceDictionary[article]
+	#	return (float(len(zen_no_punc)/sentences))
 
 
 	def get_syntactic_features(self, df = None):
@@ -108,25 +164,43 @@ class TextFeatures(object):
 
 		df_li['brunetIndex'] = corpus['text'].apply(lambda x: self.get_brunet_index(x))
 		df_li['honoreStatistic'] = corpus['text'].apply(lambda x: self.get_honore_statistic(x))
+		df_li['questionRatio'] = corpus['text'].apply(lambda x: self.get_question_ratio(x))
 		df_li['label'] = corpus['label']
 			
 			#for (key, val) in getLogFrequencyTags(tokens).items():
 			#	row[key+"_logfreq"] = val
 		return df_li
 
+	def get_lexical_features(self, df = None):
+		if df is None:
+			df = self.df
+		corpus = self.reshapedf(df)
+		df_li = pd.DataFrame()
+
+		df_li['articleLength'] = corpus['text'].str.split().apply(len)
+		df_li['avgWordLength'] = corpus['text'].apply(lambda x: self.get_word_count(x))
+		return df_li
+
+
 	def get_all_features(self, df = None):
 		if df is None:
 			df = self.df
 
+		print("Getting pyscholingustic features...")
 		pronouns = self.get_personal_pronouns()
+		print("Getting syntactic features...")
 		syntactic = self.get_syntactic_features()
+		print("Getting lexical features...")
+		lexical = self.get_lexical_features()
 		pronouns['id'] = pronouns.index
 		syntactic['id'] = syntactic.index
+		lexical['id'] = lexical.index
 		label = pronouns.label
 		pronouns = pronouns.drop(['label'], axis = 1)
 		syntactic = syntactic.drop(['label'], axis = 1)
 
 		feature_df = pd.merge(pronouns, syntactic, how = 'outer', on = 'id')
+		feature_df = pd.merge(feature_df, lexical, how = 'outer', on = 'id')
 		feature_df['label'] = label
 		return feature_df
 

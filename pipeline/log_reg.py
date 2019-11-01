@@ -4,11 +4,14 @@ import pandas as pd
 import numpy as np 
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix as cm
+import matplotlib.pyplot as plt 
+from sklearn.preprocessing import StandardScaler
+
 class FeaturePredictor(object):
 
 	def __init__(self,
 				 file = None,
-				 features = ['count', 'brunetIndex', 'honoreStatistic'],
+				 features = ['count', 'brunetIndex', 'honoreStatistic', 'questionRatio', 'articleLength', 'avgWordLength'],
 				 scaler = None):
 		self.features = features
 		self.scaler = scaler
@@ -36,3 +39,15 @@ class FeaturePredictor(object):
 		#y_pred = mdl.predict(X_test)
 		#return cm(y_test, y_pred)
 		return mdl.score(X_test, y_test)
+'''
+	def run_plot(self):
+		df = pd.read_csv(self.file)
+		df = df.drop(['id', 'fixme'], axis = 1)
+		X= df[self.features]
+		y = df['label']
+		plt.scatter(X[self.features[0]], X[self.features[1]], c = y)
+		plt.show()
+
+predictor = FeaturePredictor(file = './data/features.csv', features = ['brunetIndex', 'honoreStatistic'], scaler = StandardScaler())
+predictor.run_plot()
+'''
