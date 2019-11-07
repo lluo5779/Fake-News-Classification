@@ -32,13 +32,16 @@ class TextFeatures(object):
 
 	def __init__(self,
 				 df = None):
-
+		self.lms = {}
 		self.df = df
 
 	def reshapedf(self, raw_df = None):
 		'''
-			Input format: df with col id and text at minimum
-			Output format: [{id# : listOfTokens}, {id#: listOfTokens}, ...]
+			Returns df that joins all sentences in an article. Each row of 
+			resulting df is an article.
+			
+			Input format: df with col names id and text at minimum
+			Output format: [{id#1 : listOfArticle1Tokens}, {id#2: listOfArticle2Tokens}, ...]
 		'''
 		
 		if raw_df is None:
@@ -52,26 +55,50 @@ class TextFeatures(object):
 		return df
 		
 	def get_standardized_word_entropy(self, words) -> int:
+		lm = self.get_MLELM(words)
 		return lm.entropy(words) / len(lm.vocab)
 	
 	def get_MLELM(self, tokens, n_gram = 2) -> MLE:
+		'''
+			Trains lm and stores in class upon training to be reused
+		'''
 		paddedLine = [list(pad_both_ends(tokens, n=n_gram))]
 		train, vocab = padded_everygram_pipeline(2, paddedLine)
 			
-		lm = MLE(n_gram)
-		lm.fit(train, vocab)
+		if (tokens not in self.lms.keys()):
+			lm = MLE(n_gram)
+			lm.fit(train, vocab)
+			self.lms[tokens] = lm
+			
+		return self.lms[tokens]
 		
-		return lm
-		
-	def get_log_frequency_tags(self, tokens):
+	def get_sqrt_frequency_tags_per_article(self, tokens):
 		txt_tagged = nltk.pos_tag(tokens)
 		tag_fd = nltk.FreqDist(tag for (word, tag) in txt_tagged)
 		tagged_freq = tag_fd.most_common()
 		freq = {}
 		for (tag, count) in tagged_freq:
-			freq[tag] = np.log(count / len(txt_tagged))
-			#print(freq[tag])
+			freq[tag] = np.sqrt(count / len(txt_tagged))
 		return freq
+
+	def get_sqrt_frequency_tags(self,df):
+		'''
+			Iterate through the articles, on each iteration, calls get_sqrt_frequency_tags. 
+		'''
+		df_pos = pd.DataFrame()
+		
+		for i, row in df.iteritems():
+			dic_pos = {}
+			for (key, val) in self.get_sqrt_frequency_tags_per_article(row).items():
+				# if key+"_sqrtfreq" not in dic_pos.keys():
+				# 	dic_pos[key+"_sqrtfreq"] = []
+				dic_pos[key+"_sqrtfreq"] = val
+			df_pos = df_pos.append(dic_pos, ignore_index=True)
+		df_pos['id'] = df.index
+		# df_pos =  df_pos.set_index('id')
+		return df_pos
+		
+
 		
 	def get_brunet_index(self, tokens):
 		lm = self.get_MLELM(tokens)
@@ -165,11 +192,13 @@ class TextFeatures(object):
 		df_li['brunetIndex'] = corpus['text'].apply(lambda x: self.get_brunet_index(x))
 		df_li['honoreStatistic'] = corpus['text'].apply(lambda x: self.get_honore_statistic(x))
 		df_li['questionRatio'] = corpus['text'].apply(lambda x: self.get_question_ratio(x))
+		df_li['entropy'] = corpus['text'].apply(lambda x: self.get_standardized_word_entropy(x))		
 		df_li['label'] = corpus['label']
-			
-			#for (key, val) in getLogFrequencyTags(tokens).items():
-			#	row[key+"_logfreq"] = val
-		return df_li
+		df_li['id'] = corpus.index
+
+		df_pos = self.get_sqrt_frequency_tags(corpus['text'])
+		df_pos = df_pos.fillna(0.)
+		return pd.merge(df_li, df_pos, how = 'outer', on = 'id')
 
 	def get_lexical_features(self, df = None):
 		if df is None:
@@ -203,4 +232,3 @@ class TextFeatures(object):
 		feature_df = pd.merge(feature_df, lexical, how = 'outer', on = 'id')
 		feature_df['label'] = label
 		return feature_df
-
