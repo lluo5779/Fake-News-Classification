@@ -44,11 +44,9 @@ class TextFeatures(object):
 		if raw_df is None:
 			raw_df = self.df
 		raw_df = raw_df.dropna()
-
 		df = pd.DataFrame(columns = [['text', 'label']])
 		df['text'] = raw_df.groupby(['id'])['text'].apply("".join)
 		df['label'] = raw_df.groupby(['id'])['label'].first()
-
 		return df
 		
 	def get_standardized_word_entropy(self, words) -> int:
@@ -108,7 +106,7 @@ class TextFeatures(object):
 	def get_personal_pronouns(self, df = None):
 		if df is None:
 			df = self.df
-		df = self.reshapedf(df)
+		#df = self.reshapedf(df)
 		pronoun_counts = pd.DataFrame()
 		pronoun_counts['count'] = df['text'].apply(lambda x: self.count_pronouns(x))
 		pronoun_counts['label'] = df['label']
@@ -117,19 +115,15 @@ class TextFeatures(object):
 	def get_word_count(self, tokens):
 		length = len(tokens.split())
 		if length == 0:
-			print(tokens)
 			return 0
 		return sum(len(word) for word in tokens)/length
 
 	def get_tfidf(self, df):
-		X_train, X_test, y_train, y_test = train_test_split(df.drop(['label'], axis = 1), df.label, random_state=0)
 		transformer = TfidfTransformer(smooth_idf = False)
 		count_vectorizer = CountVectorizer(ngram_range=(1, 2))
-		counts = count_vectorizer.fit_transform(X_train['text'].values)
+		counts = count_vectorizer.fit_transform(df['text'].values)
 		tfidf = transformer.fit_transform(counts)
-		test_counts = count_vectorizer.transform(X_test['text'].values)
-		test_tfidf = transformer.fit_transform(test_counts)
-		return tfidf, test_tfidf, y_train, y_test
+		return tfidf
 
 
 	#def getDistinctWords(tokens):
@@ -159,7 +153,8 @@ class TextFeatures(object):
 		if df is None:
 			df = self.df
 
-		corpus = self.reshapedf(df)
+		#corpus = self.reshapedf(df)
+		corpus = df.copy()
 		df_li = pd.DataFrame()
 
 		df_li['brunetIndex'] = corpus['text'].apply(lambda x: self.get_brunet_index(x))
@@ -174,7 +169,8 @@ class TextFeatures(object):
 	def get_lexical_features(self, df = None):
 		if df is None:
 			df = self.df
-		corpus = self.reshapedf(df)
+		#corpus = self.reshapedf(df)
+		corpus = df.copy()
 		df_li = pd.DataFrame()
 
 		df_li['articleLength'] = corpus['text'].str.split().apply(len)
@@ -185,22 +181,19 @@ class TextFeatures(object):
 	def get_all_features(self, df = None):
 		if df is None:
 			df = self.df
-
 		print("Getting pyscholingustic features...")
-		pronouns = self.get_personal_pronouns()
+		pronouns = self.get_personal_pronouns(df)
 		print("Getting syntactic features...")
-		syntactic = self.get_syntactic_features()
+		syntactic = self.get_syntactic_features(df)
 		print("Getting lexical features...")
-		lexical = self.get_lexical_features()
+		lexical = self.get_lexical_features(df)
 		pronouns['id'] = pronouns.index
 		syntactic['id'] = syntactic.index
 		lexical['id'] = lexical.index
 		label = pronouns.label
-		pronouns = pronouns.drop(['label'], axis = 1)
+		#pronouns = pronouns.drop(['label'], axis = 1)
 		syntactic = syntactic.drop(['label'], axis = 1)
-
 		feature_df = pd.merge(pronouns, syntactic, how = 'outer', on = 'id')
 		feature_df = pd.merge(feature_df, lexical, how = 'outer', on = 'id')
-		feature_df['label'] = label
 		return feature_df
 

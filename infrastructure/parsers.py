@@ -41,7 +41,7 @@ import pickle
 import re
 from typing import Dict, List, Tuple
 
-RAW_TXT = './data/processed/datasets/train_whole.csv'
+RAW_TXT = './data/processed/datasets/train.csv'
 CONTRACTIONS = './data/contractions.pkl'
 INDICES = ['id', 'text', 'label']
 
@@ -103,7 +103,7 @@ def underscore_and_slash_to_space(data: pd.Series) -> pd.Series:
     :param data: a Series of Comment data
 
     """
-    return data.replace(r'[\_/]', value=' ', regex=True)
+    return data.replace(r'[\_/-]', value=' ', regex=True)
 
 
 def shrink_whitespace(data: pd.Series) -> pd.Series:
@@ -112,7 +112,8 @@ def shrink_whitespace(data: pd.Series) -> pd.Series:
     :param data: a Series of Comment data
 
     """
-    return data.replace(r'\s+', value=' ', regex=True)
+    data = data.replace(r'\s+', value=' ', regex=True)
+    return data.str.strip()
 
 
 
@@ -133,7 +134,6 @@ def remove_punctuation(data: pd.Series) -> pd.Series:
     """
     return data.replace(r'[^\w\s]+', value='', regex=True)
 
-
 def numbers_to_words(data: pd.Series) -> pd.Series:
     """Replaces numbers with their matching full text words.
 
@@ -142,7 +142,7 @@ def numbers_to_words(data: pd.Series) -> pd.Series:
     """
     engine = inflect.engine()
     return data.apply(lambda row: re.sub(
-        r'\d+', lambda x: engine.number_to_words(x.group()), row))
+        r'(?<!\S)\d+(?!\S)', lambda x: engine.number_to_words(x.group()), row))
 
 
 def remove_stopwords(data: pd.Series) -> pd.Series:
@@ -252,7 +252,7 @@ def stage_two_preprocessing(data: pd.Series) -> pd.Series:
     # designed to be run after remove_contractions
     data_ = data.dropna()
     data_ = remove_punctuation(data_)
-    #data_ = numbers_to_words(data_)
+    data_ = numbers_to_words(data_)
     data_ = remove_stopwords(data_)
     return data_
 
@@ -265,7 +265,7 @@ def stage_three_preprocessing(data: pd.Series) -> pd.Series:
     """
     data_ = data.dropna()
     data_ = shrink_whitespace(data_)
-    data_ = lemmatize(data_)
+    #data_ = lemmatize(data_)
     return data_
 
 def run_pipeline() -> pd.DataFrame:
@@ -281,8 +281,8 @@ def run_pipeline() -> pd.DataFrame:
     text_ = stage_one_preprocessing(text)
     data_ = data.copy()
     data_.text = text_
-    print('Splitting by sentences...')
-    data_ = split_by_sentences(data_)
+    #print('Splitting by sentences...')
+    #data_ = split_by_sentences(data_)
     print('Stage two processing...')
     text_ = stage_two_preprocessing(data_.text)
     print('Stage three processing...')
@@ -293,5 +293,5 @@ def run_pipeline() -> pd.DataFrame:
     return data_
 
 
-if __name__ == "__main__":
-    run_pipeline().to_csv('train_whole_preprocessed.csv')
+#if __name__ == "__main__":
+#    run_pipeline().to_csv('train_whole_preprocessed.csv')
