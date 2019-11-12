@@ -71,6 +71,7 @@ class EnsembleClassifier(object):
 				X = self.dense_data[0]
 			else:
 				X = self.sparse_data[0]
+			print(X)
 			clf.fit(X, y)
 
 			pred_list_a = []
@@ -123,7 +124,7 @@ class EnsembleClassifier(object):
 	def run_cross_val(self, file = 'data/processed/datasets/data_preprocessed_final.csv', proba = True):
 		df = pd.read_csv(file)[:10]
 		df = df.dropna()
-		df = df.reset_index(["Unnamed: 0", "id"]).drop(["Unnamed: 0"], axis = 1)
+		#df = df.reset_index(["Unnamed: 0", "id"]).drop(["Unnamed: 0"], axis = 1)
 		k_fold = KFold(n_splits = 3, random_state = 22)
 		scores = []
 		for train_index, test_index in k_fold.split(df):
