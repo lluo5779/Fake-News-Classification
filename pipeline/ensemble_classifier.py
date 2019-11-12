@@ -120,8 +120,8 @@ class EnsembleClassifier(object):
 
 		return self.meta_classifier.score(self.sub_data, y)
 
-	def run_cross_val(self, file = 'data/stage_three_text.csv', proba = True):
-		df = pd.read_csv(file)[:100000]
+	def run_cross_val(self, file = 'data/processed/datasets/data_preprocessed_final.csv', proba = True):
+		df = pd.read_csv(file)[:10]
 		df = df.dropna()
 		df = df.reset_index(["Unnamed: 0", "id"]).drop(["Unnamed: 0"], axis = 1)
 		k_fold = KFold(n_splits = 3, random_state = 22)
